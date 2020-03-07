@@ -6,8 +6,7 @@ Set-PowerCLIConfiguration -InvalidCertificateAction:Ignore
 ########################
 # Variables
 ########################
-$Global:Servers = [System.Windows.Forms.TextBox]@{}
-$Global:Types = [System.Windows.Forms.ComboBox]@{}
+$Global:Stands = @{}
 [Int32]$Position = 0
 $Global:StandLocation = 30
 $Global:StandCount = 1
@@ -15,7 +14,7 @@ $Global:StandCount = 1
 #######################
 # Functions
 #######################
-
+ 
 function Add-Stand {
     param (
         [int]$Count,
@@ -49,7 +48,7 @@ function Add-Stand {
     }
     
     #New Button Settings
-    $NewButton.Add_Click( { ButtonClick })
+    $NewButton.Add_Click({ ButtonClick })
     $NewButton.Text = "+"
     $NewButton.Width = 20
     $NewButton.Height = 20
@@ -69,8 +68,8 @@ function Add-Stand {
     $CompleteStatus.Width = 200
     $CompleteStatus.Height = 20
     $CompleteStatus.Location = New-Object System.Drawing.Point(250, $Location)
-    $Global:Servers += $ServerIP
-    $Global:Types += $Type
+
+    $Global:Stands+=$ServerIP
 }
 
 ########################
@@ -109,8 +108,7 @@ function Add-Stand {
 
 function deploy() {
     for ($i = 0; $i -lt $Global:Stands.Count; $i++) {
-        Write-Host $Global:Servers[$i].Text
-        Write-Host $Global:Types[$i].SelectedText
+        Write-Host $Global:Stands[$i].Text
     }
 }
 function ButtonClick () {
