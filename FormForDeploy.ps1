@@ -69,7 +69,7 @@ function Add-Stand {
     $CompleteStatus.Height = 20
     $CompleteStatus.Location = New-Object System.Drawing.Point(250, $Location)
 
-    $Global:Stands+=$ServerIP
+    $Global:Stands += $ServerIP
 }
 
 ########################
