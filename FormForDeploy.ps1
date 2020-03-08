@@ -6,11 +6,14 @@ Set-PowerCLIConfiguration -InvalidCertificateAction:Ignore
 ########################
 # Variables
 ########################
-$Global:Stands = @{}
+$Global:Stands = @()
+$Global:Progresses = @()
+$Global:Types = @()
+$Global:Id = @()
 [Int32]$Position = 0
 $Global:StandLocation = 30
 $Global:StandCount = 1
-
+$Global:DeployCounter
 #######################
 # Functions
 #######################
@@ -55,6 +58,7 @@ function Add-Stand {
     $NewButton.Location = New-Object System.Drawing.Point(5, $Location)
 
     $ServerIP.Width = 120
+    $ServerIP.Name = "ServerIP$StandCount"
     $ServerIP.Location = New-Object System.Drawing.Point(30, $Location)        
 
     #Type Select Box Setting
@@ -70,11 +74,16 @@ function Add-Stand {
     $CompleteStatus.Location = New-Object System.Drawing.Point(250, $Location)
 
     $Global:Stands += $ServerIP
+    $Global:Types+=$Type
+    $Global:Progresses+=$CompleteStatus
 }
 
 ########################
 # Creating elements
 ########################
+
+# Timer for Checking Completion
+[System.Windows.Forms.Timer]$Timer = New-Object System.Windows.Forms.Timer
 
 # Linux Image
 [System.Windows.Forms.Label]$LinuxLabel = New-Object System.Windows.Forms.Label
@@ -105,11 +114,44 @@ function Add-Stand {
 #########################
 # Element Events
 #########################
-
-function deploy() {
-    for ($i = 0; $i -lt $Global:Stands.Count; $i++) {
-        Write-Host $Global:Stands[$i].Text
+function CheckStatus() {
+    for ($i = 0; $i -lt $Global:Id.Count; $i++) {
+        if ($Global:DeployCounter -eq 0) {
+            $Timer.Stop()
+            return
+        }
+        if (((Get-Task -id $Global:Id[$i])[(Get-Task).Id.Length - 1].State -eq "Success") -and ($Global:Id[$i] -ne 0)) {
+            $Global:Id[$i] = 0
+            $Global:DeployCounter-=1
+        }
+        if (((Get-Task -id $Global:Id[$i])[(Get-Task).Id.Length - 1].State -eq "Running") -and ($Global:Id[$i] -ne 0))         
+        {
+            $Global:Progresses[$i].Value = (Get-Task -id $Global:Id[$i]).PercentComplete
+            Write-Host (Get-Task -id $Global:Id[$i]).PercentComplete
+        }
     }
+}
+function deploy() {
+    [int]$LinuxNumber = 0
+    [int]$WindowsNumber = 0
+    for ($i = 0; $i -lt $Global:Stands.Count; $i++) {
+        Connect-VIServer -Server $vCenterIP.Text -Credential (Get-Credential -Message "Enter a vCenter credential")
+        if ($Global:Types[$i].Text -eq "Linux") {
+            $LinuxNumber += 1
+            Import-VApp -Source $LinuxPath.Text -VMHost $Global:Stands[$i].Text -Name "Linux_Stand$LinuxNumber" -RunAsync
+            Write-Host $Global:Stands[$i].Text
+            Write-Host $Global:Types[$i].Text
+        }else {
+            $WindowsNumber += 1
+            Import-VApp -Source $WindowsPath.Text -VMHost $Global:Stands[$i].Text -Name "Windows_Stand$WindowsNumber" -RunAsync
+            Write-Host $Global:Stands[$i].Text
+            Write-Host $Global:Types[$i].Text
+        }
+        Start-Sleep -Seconds 4
+        Write-Host (Get-Task)[(Get-Task).Id.Length - 1].ID
+        $Global:Id += (Get-Task)[(Get-Task).Id.Length - 1].ID
+    }
+    $Timer.Start()
 }
 function ButtonClick () {
     $Global:StandCount = $StandCount + 1
@@ -144,6 +186,9 @@ $form.add_FormClosing({
         $e.Cancel= $true
     }
 })
+
+$Timer.Interval = 1000
+$Timer.Add_Tick({CheckStatus})
 
 $FileDialog.Filter = 'ESXI Images(*.ova)|*.ova'
 $FileDialog.AddExtension = $true
